@@ -17,6 +17,7 @@ import cv2
 import numpy as np
 import pandas as pd
 import requests
+import timm
 import torch
 import torch.nn as nn
 from PIL import Image
@@ -1110,3 +1111,126 @@ class Classify(nn.Module):
         if isinstance(x, list):
             x = torch.cat(x, 1)
         return self.linear(self.drop(self.pool(self.conv(x)).flatten(1)))
+
+# Global feature registry for ConvNext multi-scale outputs
+# Use a dict keyed by input tensor id to handle multiple forward passes
+_CONVNEXT_FEATURES = {}
+
+class ConvNextTiny(nn.Module):
+    """
+    ConvNext-Tiny backbone for YOLOv5.
+    """
+    
+    def __init__(self, c1_or_c2=512, c2=None, pretrained=True):
+        super().__init__()
+        
+        # Handle both cases: (c1, c2) or just (c2,)
+        if c2 is None:
+            c2 = c1_or_c2
+            c1 = 3
+        else:
+            c1 = c1_or_c2
+        
+        print(f"Initializing ConvNext-Tiny (pretrained={pretrained})...")
+        print(f"  c1={c1} (ignored), c2={c2} (P5 output channels)")
+        
+        # Load ConvNext-Tiny from timm
+        self.backbone = timm.create_model(
+            'convnext_tiny',
+            pretrained=pretrained,
+            features_only=True,
+            out_indices=[1, 2, 3]
+        )
+        
+        # Detect stage channels
+        with torch.no_grad():
+            dummy = torch.zeros(1, 3, 224, 224)
+            features = self.backbone(dummy)
+            stage_channels = [f.shape[1] for f in features]
+            print(f"  Stage channels: {stage_channels}")
+        
+        # Channel adapters
+        self.p3_adapter = nn.Sequential(
+            nn.Conv2d(stage_channels[0], 128, 1, bias=False),
+            nn.BatchNorm2d(128),
+            nn.SiLU(inplace=True)
+        )
+        
+        self.p4_adapter = nn.Sequential(
+            nn.Conv2d(stage_channels[1], 256, 1, bias=False),
+            nn.BatchNorm2d(256),
+            nn.SiLU(inplace=True)
+        )
+        
+        self.p5_adapter = nn.Sequential(
+            nn.Conv2d(stage_channels[2], c2, 1, bias=False),
+            nn.BatchNorm2d(c2),
+            nn.SiLU(inplace=True)
+        )
+        
+    def forward(self, x):
+        """Extract features and store in global registry keyed by batch"""
+        global _CONVNEXT_FEATURES
+        
+        # Get multi-scale features from ConvNext
+        features = self.backbone(x)
+        
+        # Adapt channel dimensions
+        p3 = self.p3_adapter(features[0])  # 1/8 scale, 128 channels
+        p4 = self.p4_adapter(features[1])  # 1/16 scale, 256 channels
+        p5 = self.p5_adapter(features[2])  # 1/32 scale, 512 channels
+        
+        # Store using the input tensor's data_ptr as key (unique per forward pass)
+        # This ensures we get the right features for the current input
+        key = x.data_ptr()
+        _CONVNEXT_FEATURES[key] = {'p3': p3, 'p4': p4, 'p5': p5}
+        
+        # Also store as 'latest' for easy access
+        _CONVNEXT_FEATURES['latest'] = key
+        
+        # Return P5 as primary output (deepest features)
+        return p5
+
+
+class ConvNextP4(nn.Module):
+    """
+    Helper module to extract P4 features from ConvNext.
+    """
+    
+    def __init__(self, c1=None, c2=None):
+        super().__init__()
+        
+    def forward(self, x):
+        """Retrieve P4 from global feature registry for current forward pass"""
+        global _CONVNEXT_FEATURES
+        
+        if _CONVNEXT_FEATURES and 'latest' in _CONVNEXT_FEATURES:
+            latest_key = _CONVNEXT_FEATURES['latest']
+            if latest_key in _CONVNEXT_FEATURES:
+                return _CONVNEXT_FEATURES[latest_key]['p4']
+        
+        # Fallback - should not happen
+        print("WARNING: ConvNextP4 could not find cached features!")
+        return x
+
+
+class ConvNextP3(nn.Module):
+    """
+    Helper module to extract P3 features from ConvNext.
+    """
+    
+    def __init__(self, c1=None, c2=None):
+        super().__init__()
+        
+    def forward(self, x):
+        """Retrieve P3 from global feature registry for current forward pass"""
+        global _CONVNEXT_FEATURES
+        
+        if _CONVNEXT_FEATURES and 'latest' in _CONVNEXT_FEATURES:
+            latest_key = _CONVNEXT_FEATURES['latest']
+            if latest_key in _CONVNEXT_FEATURES:
+                return _CONVNEXT_FEATURES[latest_key]['p3']
+        
+        # Fallback - should not happen
+        print("WARNING: ConvNextP3 could not find cached features!")
+        return x
