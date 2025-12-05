@@ -28,8 +28,8 @@ python train.py \
   --data coco.yaml \
   --cfg models/yolov5s-convnext.yaml \
   --weights '' \
-  --workers 2 \
-  --device 1 \
+  --workers 1 \
+  --device 0 \
   --evolve 6 \
   --evolve_population_size 10 \
   --evolve_important_only \
