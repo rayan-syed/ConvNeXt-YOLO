@@ -2,8 +2,8 @@
 
 #$ -P ec523bn
 #$ -j y
-#$ -N yolov5_test
-#$ -o logs/yolo_test.qlog
+#$ -N yolov5_simple
+#$ -o logs/yolo_simple.qlog
 
 #$ -l h_rt=5:00:00
 #$ -pe omp 4
@@ -25,8 +25,8 @@ python train.py \
   --weights '' \
   --workers 2 \
   --device 0 \
-  --name convnext_test \
+  --name convnext_simple \
   --cache disk  
 
 # eval
-python val.py --weights runs/train/convnext_test/weights/best.pt --data coco.yaml --img 640
+python val.py --weights runs/train/convnext_simple/weights/best.pt --data coco.yaml --img 640
