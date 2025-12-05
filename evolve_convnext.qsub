@@ -29,7 +29,7 @@ python train.py \
   --cfg models/yolov5s-convnext.yaml \
   --weights '' \
   --workers 2 \
-  --device 0 \
+  --device 1 \
   --evolve 10 \
   --evolve_population_size 10 \
   --evolve_important_only \
