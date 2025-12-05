@@ -5,7 +5,7 @@
 #$ -N yolov5_evolve
 #$ -o logs/evolve.qlog
 
-#$ -l h_rt=16:00:00
+#$ -l h_rt=20:00:00
 #$ -pe omp 4
 
 #$ -l gpus=1
@@ -16,21 +16,21 @@ module load python3
 source .venv/bin/activate
 
 # train
-# --evolve 10: Run evolution for 10 generations 
+# --evolve 6: Run evolution for 6 generations 
 # --evolve_population_size 10: Use a population of 10 individuals per generation
-# --epochs 2: Train each individual for 2 epochs (10 mins/run)
-# --evolve_important_only: Evolve only critical hyperparameters
+# --epochs 3: Train each individual for 3 epochs 
+# --evolve_important_only: Evolve only critical hyperparameters: ["lr0", "lrf", "momentum", "weight_decay", "box", "cls", "obj"]
 # --name evolve_convnext: Experiment name (results in runs/evolve/evolve_convnext)
 python train.py \
   --img 640 \
   --batch 16 \
-  --epochs 2 \
+  --epochs 3 \
   --data coco.yaml \
   --cfg models/yolov5s-convnext.yaml \
   --weights '' \
   --workers 2 \
   --device 1 \
-  --evolve 10 \
+  --evolve 6 \
   --evolve_population_size 10 \
   --evolve_important_only \
   --name evolve_convnext \
