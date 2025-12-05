@@ -324,8 +324,7 @@ def train(hyp, opt, device, callbacks):
 
         if not resume:
             if not opt.noautoanchor:
-                # check_anchors(dataset, model=model, thr=hyp["anchor_t"], imgsz=imgsz)  # run AutoAnchor
-                pass
+                check_anchors(dataset, model=model, thr=hyp["anchor_t"], imgsz=imgsz)  # run AutoAnchor
             model.half().float()  # pre-reduce anchor precision
 
         callbacks.run("on_pretrain_routine_end", labels, names)
