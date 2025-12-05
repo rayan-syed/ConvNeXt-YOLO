@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-#$ -P ec500bn
+#$ -P ec523bn
 #$ -j y
 #$ -N yolov5_evolve
 #$ -o logs/evolve.qlog
