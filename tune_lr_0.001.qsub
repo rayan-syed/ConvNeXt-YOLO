@@ -20,7 +20,7 @@ python train.py \
   --img 640 \
   --batch 16 \
   --epochs 3 \
-  --data coco128.yaml \
+  --data coco.yaml \
   --cfg models/yolov5s-convnext.yaml \
   --weights '' \
   --workers 2 \
