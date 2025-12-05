@@ -582,6 +582,7 @@ def parse_opt(known=False):
         "--evolve_population", type=str, default=ROOT / "data/hyps", help="location for loading population"
     )
     parser.add_argument("--evolve_population_size", type=int, default=50, help="population size for evolution")
+    parser.add_argument("--evolve_important_only", action="store_true", help="evolve only important hyperparameters")
     parser.add_argument("--resume_evolve", type=str, default=None, help="resume evolve from last generation")
     parser.add_argument("--bucket", type=str, default="", help="gsutil bucket")
     parser.add_argument("--cache", type=str, nargs="?", const="ram", help="image --cache ram/disk")
@@ -752,6 +753,15 @@ def main(opt, callbacks=Callbacks()):
                     str(evolve_csv),
                 ]
             )
+
+        # Filter for important hyperparameters if requested
+        if opt.evolve_important_only:
+            important_keys = ["lr0", "lrf", "momentum", "weight_decay", "box", "cls", "obj"]
+            for k in meta:
+                if k in important_keys:
+                    meta[k] = (True, meta[k][1], meta[k][2])
+                else:
+                    meta[k] = (False, meta[k][1], meta[k][2])
 
         # Delete the items in meta dictionary whose first value is False
         del_ = [item for item, value_ in meta.items() if value_[0] is False]
