@@ -1,0 +1,35 @@
+#!/bin/bash -l
+
+#$ -P ec523bn
+#$ -j y
+#$ -N cls_obj_gain
+#$ -o logs/cls_obj_gain.qlog
+
+#$ -l h_rt=5:00:00
+#$ -pe omp 4
+
+#$ -l gpus=1
+#$ -l gpu_c=7.0
+
+# updated dino env combining dino reqs with breast-CLIP-downstream reqs
+module load python3
+source .venv/bin/activate
+
+# Doubling the cls gain is essential if your model is localizing objects correctly but struggling with misclassification. Reducing the obj gain can help mitigate false positives (background detected as an object).
+
+# train
+python train.py \
+  --img 640 \
+  --batch 16 \
+  --epochs 5 \
+  --data coco.yaml \
+  --cfg models/yolov5s-convnext.yaml \
+  --weights '' \
+  --workers 2 \
+  --device 0 \
+  --hyp data/hyps/hyp.scratch-low_cls_obj_gain.yaml \
+  --name cls_obj_gain
+
+# eval
+python val.py --weights runs/train/cls_obj_gain/weights/best.pt --data coco.yaml --img 640 --name cls_obj_gain
+

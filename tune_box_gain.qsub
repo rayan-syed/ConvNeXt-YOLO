@@ -1,0 +1,35 @@
+#!/bin/bash -l
+
+#$ -P ec523bn
+#$ -j y
+#$ -N box_gain
+#$ -o logs/box_gain.qlog
+
+#$ -l h_rt=5:00:00
+#$ -pe omp 4
+
+#$ -l gpus=1
+#$ -l gpu_c=7.0
+
+# updated dino env combining dino reqs with breast-CLIP-downstream reqs
+module load python3
+source .venv/bin/activate
+
+# Doubling the box gain forces the model to prioritize accurate bounding box coordinates. This is the most common and effective adjustment for COCO's dense, multi-scale detections, especially for small objects which are sensitive to slight localization errors.
+
+# train
+python train.py \
+  --img 640 \
+  --batch 16 \
+  --epochs 5 \
+  --data coco.yaml \
+  --cfg models/yolov5s-convnext.yaml \
+  --weights '' \
+  --workers 2 \
+  --device 0 \
+  --hyp data/hyps/hyp.scratch-low_box_gain.yaml \
+  --name box_gain
+
+# eval
+python val.py --weights runs/train/box_gain/weights/best.pt --data coco.yaml --img 640 --name box_gain
+

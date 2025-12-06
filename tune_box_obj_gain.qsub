@@ -1,0 +1,35 @@
+#!/bin/bash -l
+
+#$ -P ec523bn
+#$ -j y
+#$ -N box_obj_gain
+#$ -o logs/box_obj_gain.qlog
+
+#$ -l h_rt=5:00:00
+#$ -pe omp 4
+
+#$ -l gpus=1
+#$ -l gpu_c=7.0
+
+# updated dino env combining dino reqs with breast-CLIP-downstream reqs
+module load python3
+source .venv/bin/activate
+
+# This is an aggressive approach: High box gain for localization and High obj gain for recall. Use this if your model is missing many objects (low recall) and you need to maximize the number of detected boxes, even at the cost of some increased false positives.
+
+# train
+python train.py \
+  --img 640 \
+  --batch 16 \
+  --epochs 5 \
+  --data coco.yaml \
+  --cfg models/yolov5s-convnext.yaml \
+  --weights '' \
+  --workers 2 \
+  --device 0 \
+  --hyp data/hyps/hyp.scratch-low_box_obj_gain.yaml \
+  --name box_obj_gain
+
+# eval
+python val.py --weights runs/train/box_obj_gain/weights/best.pt --data coco.yaml --img 640 --name box_obj_gain
+
