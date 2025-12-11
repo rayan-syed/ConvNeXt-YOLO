@@ -4,6 +4,8 @@ Logan Lechuga · Jared Shi · Rayan Syed · Peter Zhao
 
 Boston University · EC523 Deep Learning Fall 2025 Project
 
+[Full Report](docs/FinalReport.pdf)
+
 ## Overview
 This project investigates whether modern ConvNeXt backbones can improve object detection performance when integrated into the YOLOv5 framework. YOLO's default CSPDarknet backbone is replaced with ConvNeXt-Tiny, leveraging improved multi-scale feature extraction, larger receptive fields, and modernized ConvNet design principles inspired by Vision Transformers.
 
