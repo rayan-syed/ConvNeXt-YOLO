@@ -24,7 +24,7 @@ We benchmark against:
 
 ### Architecture
 We replace the CSPDarknet backbone with a pretrained ConvNeXt-Tiny network from `timm` (pretrained on ImageNet-1k).
-Three stages of ConvNeXt output features that correspond to YOLO’s required scales.
+ConvNeXt-Tiny produces feature maps from three later stages, which we manually map to YOLO’s required P3, P4, and P5 scales (strides 8, 16, and 32) using 1×1 convolutions to adjust channel dimensions.
 
 To ensure compatibility with PANet, we inject lightweight 1×1 Conv layers to map ConvNeXt channels → YOLO channels and to support YOLO’s multi-scale forward pass, we implement a Global Feature Registry storing (P3, P4, P5) until retrieval by the PANet neck.
 
