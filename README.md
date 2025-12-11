@@ -1,6 +1,7 @@
 # ConvNeXt Backbones in YOLO for Object Detection
 
 Logan Lechuga · Jared Shi · Rayan Syed · Peter Zhao
+
 Boston University · EC523 Deep Learning Fall 2025 Project
 
 ## Overview
