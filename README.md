@@ -1,20 +1,36 @@
 # ConvNeXt Backbones in YOLO for Object Detection
 
-This project integrates modern ConvNeXt backbones into the YOLOv5 framework to improve object detection performance, particularly for small or densely packed objects. We replace YOLOv5's default CSPDarknet backbone with ConvNeXt-Tiny while maintaining YOLO's detection head and neck architecture.
+Logan Lechuga · Jared Shi · Rayan Syed · Peter Zhao
+Boston University · EC523 Deep Learning Fall 2025 Project
 
-## Project Overview
+## Overview
+This project investigates whether modern ConvNeXt backbones can improve object detection performance when integrated into the YOLOv5 framework. YOLO's default CSPDarknet backbone is replaced with ConvNeXt-Tiny, leveraging improved multi-scale feature extraction, larger receptive fields, and modernized ConvNet design principles inspired by Vision Transformers.
 
-**Goal:** Analyze whether architectural advances in ConvNeXt can improve YOLO's detection capability by systematically quantifying how a ConvNeXt backbone changes detection performance on standardized benchmarks.
+Our goal is to evaluate whether these architectural advances improve performance on MS-COCO, particularly for small or densely packed objects, while maintaining compatibility with YOLO’s PANet neck, detection head, and loss functions.
 
-**Approach:**
+## Motivation
+YOLO models achieve real-time performance by tightly coupling a CNN backbone with a multi-scale detection head. However, the backbone limits performance on small objects due to restricted receptive fields and limited high-resolution feature representation. ConvNeXt modernizes CNNs using depthwise convolutions, inverted bottlenecks, and LayerNorm. We test whether these improve YOLO’s small-object performance.
 
-- Use YOLOv5s as baseline (easier to modify than YOLOv8)
-- Replace CSPDarknet backbone with ConvNeXt-Tiny from [timm library](https://github.com/huggingface/pytorch-image-models)
-- Load pretrained ConvNeXt weights from [HuggingFace](https://huggingface.co/timm/convnext_tiny.in12k_ft_in1k)
-- Initialize YOLO neck with random weights for fine-tuning
-- Ensure architectural compatibility by aligning feature map dimensions
+This project explores whether replacing CSPDarknet with ConvNeXt improves YOLO's representation power while preserving its real-time architecture.
 
-## Dataset
+## Method
+
+### Baselines
+We benchmark against:
+
+- YOLOv5s (7.5M params) – primary baseline
+- YOLOv5m (21.2M params) – comparable model size
+- ConvNeXt-YOLO (29.8M params) – our modified architecture
+
+### Architecture
+We replace the CSPDarknet backbone with a pretrained ConvNeXt-Tiny network from `timm` (pretrained on ImageNet-1k).
+Three stages of ConvNeXt output features that correspond to YOLO’s required scales.
+
+To ensure compatibility with PANet, we inject lightweight 1×1 Conv layers to map ConvNeXt channels → YOLO channels and to support YOLO’s multi-scale forward pass, we implement a Global Feature Registry storing (P3, P4, P5) until retrieval by the PANet neck.
+
+<img src="docs/architecture.png" width="800">
+
+### Dataset
 
 We use the MS-COCO dataset containing:
 
@@ -23,78 +39,64 @@ We use the MS-COCO dataset containing:
 - 80 object categories with bounding box annotations
 - Images resized to 640×640 pixels with standard YOLO augmentations
 
-**Dataset Location (SCC):** `/projectnb/ec523bn/projects/ConvNeXt-YOLO/`
-
-## Evaluation Metrics
-
-Performance measured using:
-
-- **mAP@[.5:.95]:** Mean Average Precision over IoU thresholds from 0.5 to 0.95
-- **mAP@0.5:** Mean Average Precision at IoU threshold of 0.5
-- **Precision & Recall:** Standard detection metrics
-
-## Baseline Results
-
-YOLOv5s fine-tuned for 50 epochs on MS-COCO:
-
-| Metric       | Official YOLOv5s | Our Baseline |
-| ------------ | ---------------- | ------------ |
-| mAP@0.5:0.95 | 0.374            | **0.370**    |
-| mAP@0.5      | 0.572            | **0.568**    |
-| Precision    | 0.672            | **0.651**    |
-| Recall       | 0.519            | **0.521**    |
-
-## Setup & Training
-
-### Prerequisites
-
-- PyTorch
-- YOLOv5 dependencies
-- Access to COCO dataset
-
 ### Training
+All models trained for 50 epochs on MS‑COCO with identical augmentations on an RTX6000 with 4 cores.
 
-1. In `coco.yaml`, change the "path" variable to the path of the dataset. The COCO2017 Dataset is stored on SCC at `/projectnb/ec523bn/projects/ConvNeXt-YOLO/datasets`. In this case, change the path to `/projectnb/ec523bn/projects/ConvNeXt-YOLO/datasets/coco`.
+| Model | Time (hrs) |
+|-------|-----------|
+| YOLOv5s | 7.0 |
+| YOLOv5m | 16.1 |
+| ConvNeXt-YOLO | 17.5 |
 
-2. Run the training script with the following arguments:
+## Results
 
+### Quantitative (mAP@[0.5:0.95] over epochs)
+<img src="docs/mAP_curve.png" width="600">
+
+
+| Model | mAP@[.5:.95] |
+|-------|--------------|
+| YOLOv5s | 0.3709 |
+| YOLOv5m | 0.4478 |
+| ConvNeXt-YOLO | 0.4229 |
+
+ConvNeXt-YOLO outperforms YOLOv5s, satisfying the project goal.
+
+YOLOv5m still performs best at this training schedule, suggesting ConvNeXt needs longer training or tuned hyperparameters.
+
+### Training Curves
+<img src="docs/training_curves.png" width="600">
+
+Our model converges smoothly in all three loss components (box, cls, obj).
+
+## Reproduction
+
+### Installation
 ```bash
-python train.py --img 640 --batch 16 --epochs 50 --data coco.yaml --weights yolov5s.pt --cache disk
+git clone https://github.com/rayan-syed/ConvNeXt-YOLO
+cd ConvNeXt-YOLO
+pip install -r requirements.txt
 ```
 
-Notable changes from defaults:
+### Training
+```bash
+# For baseline
+python train.py --img 640 --batch 16 --epochs 50 --data coco.yaml --weights yolov5s.pt --name YOLOv5s
 
-- Using `coco.yaml` instead of `coco128.yaml`
-- Using `--cache disk` instead of the RAM default because of the large dataset
-- Training for 50 epochs to establish baseline
+# For ConvNeXt-YOLO
+python train.py --img 640 --batch 16 --epochs 50 --data coco.yaml --cfg models/yolov5m-convnext.yaml --weights '' --name ConvNeXt-YOLO
+```
 
-### ConvNeXt Integration (In Progress)
-
-Key code changes required:
-
-- Custom backbone class for ConvNeXt-Tiny
-- Modified model YAML configuration
-- Feature map alignment layers for channel compatibility
-- Selective weight loading logic (ConvNeXt pretrained + random neck weights)
-- Custom training flags for backbone selection
+### Evaluation
+With [Comet](https://www.comet.com/site/) for logging, all evaluation happens automatically after training on the validation split. The test split is not used here just like in YOLO because MS-COCO keeps test labels private.
 
 ## Project Structure
 
-This is a fork of the official [YOLOv5 repository](https://github.com/ultralytics/yolov5) with modifications to support ConvNeXt backbones.
-
-## References
-
-1. Liu et al. "A ConvNet for the 2020s" (ConvNeXt), arXiv 2022
-2. Redmon et al. "You Only Look Once: Unified, Real-Time Object Detection", arXiv 2016
-3. Terven et al. "A Comprehensive Review of YOLO Architectures", Machine Learning and Knowledge Extraction, 2023
-4. Topuz et al. "ConvNeXt Mitosis Identification—YOLO", Laboratory Investigation, 2024
-5. Jiang et al. "ConvNeXt-YOLO Architecture with Multi-Scale Signal Processing", IEEE AUTEEE, 2024
-6. Lin et al. "Microsoft COCO: Common Objects in Context", ECCV 2014
+This is a fork of the official [YOLOv5 repository](https://github.com/ultralytics/yolov5) from Ultralytics with modifications to support ConvNeXt backbones.
 
 ## Logging
 
 All training experiments are logged via [Comet](https://www.comet.com/site/) for comprehensive model evaluation and tracking.
 
-## Success Criteria
-
-The project will be considered successful if the ConvNeXt-backed YOLO model achieves equal or higher mAP than the baseline YOLOv5s model under identical training conditions.
+## Conclusion
+Replacing CSPDarknet with ConvNeXt-Tiny improves YOLOv5s performance on COCO, confirming that modernized ConvNet backbones can enhance multi-scale representation in single-stage detectors. While ConvNeXt did not surpass YOLOv5m under equal training budgets, architectural compatibility was demonstrated, and further gains are likely with extended training or tuned hyperparameters.
