@@ -1,22 +1,21 @@
 #!/bin/bash -l
 
-#$ -P ec500bn
+#$ -P ec523bn
 #$ -j y
-#$ -N yolov5
-#$ -o logs/yolo.qlog
+#$ -N YOLOv5
+#$ -o logs/yolo-log.qlog
 
-#$ -l h_rt=24:00:00
+#$ -l h_rt=48:00:00
 #$ -pe omp 4
 
 #$ -l gpus=1
-#$ -l gpu_c=7.0
+#$ -l gpu_c=8.0
 
-# updated dino env combining dino reqs with breast-CLIP-downstream reqs
 module load python3
 source .venv/bin/activate
 
 # train
-python train.py --img 640 --batch 16 --epochs 50 --data coco.yaml --weights yolov5s.pt --cache disk
+python train.py --img 640 --batch 16 --epochs 50 --data coco.yaml --cfg models/yolov5m-convnext.yaml --weights '' --cache disk --name convnext-yolov5m
 
-# eval
-python val.py --weights runs/train/exp3/weights/best.pt --data coco.yaml --img 640
+# test
+python val.py --weights yolov5m.pt --data coco.yaml --img 640 --name convnext-yolov5m
